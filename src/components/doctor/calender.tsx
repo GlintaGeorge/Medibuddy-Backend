@@ -1,435 +1,403 @@
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import Swal from "sweetalert2";
+import React, { useState, lazy, useEffect, Suspense } from "react";
+import dayGridPlugin  from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { Button } from 'primereact/button';
+import Modal from "react-modal";
 import { DOCTOR_API } from "../../constants";
 import showToast from "../../utils/toaster";
 import axiosJWT from "../../utils/axiosService";
-import { useSelector } from "react-redux";
-import { RootState } from "../../redux/reducer/reducer";
-import { RRule } from 'rrule';
-import moment from "moment";
+const FullCalendar = lazy(() => import('@fullcalendar/react'));
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import interactionPlugin from "@fullcalendar/interaction";
 
-interface TimeSlot {
-  start: string;
-  end: string;
-}
-
-interface SelectedTimeSlots {
-  [key: number]: TimeSlot[];
-}
-
-interface ScheduledSlot {
-  _id: string;
-  startDate: string;
-  endDate: string;
-  slots: DaySlot[];
-}
-
-interface DaySlot {
-  _id: string;
-  day: number;
-  times: TimeSlot[];
-}
-
-const DoctorCalendar: React.FC = () => {
-  const [selectedStartDate, setSelectedStartDate] = useState<string | null>(null);
-  const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null);
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
-  const [scheduledSlots, setScheduledSlots] = useState<ScheduledSlot[]>([]);
-  const [selectedTimeSlots, setSelectedTimeSlots] = useState<SelectedTimeSlots>({});
-  const [editingSlot, setEditingSlot] = useState<{ day: number, index: number } | null>(null);
-  const [editedTimeSlot, setEditedTimeSlot] = useState<TimeSlot | null>(null);
-
-  const doctor = useSelector((state: RootState) => state.DoctorSlice);
-
-  const daysOfWeek = [
-    { day: 0, label: "Sunday" },
-    { day: 1, label: "Monday" },
-    { day: 2, label: "Tuesday" },
-    { day: 3, label: "Wednesday" },
-    { day: 4, label: "Thursday" },
-    { day: 5, label: "Friday" },
-    { day: 6, label: "Saturday" },
-  ];
-
-  const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    for (let i = 9; i <= 17; i++) {
-      const startHour = i > 12 ? i - 12 : i;
-      const endHour = i + 1 > 12 ? i - 11 : i + 1;
-      const period = i >= 12 ? "PM" : "AM";
-      const nextPeriod = i + 1 >= 12 ? "PM" : "AM";
-      slots.push({ start: `${startHour}:00 ${period}`, end: `${endHour}:00 ${nextPeriod}` });
-    }
-    return slots;
-  };
-
-  const timeSlots = generateTimeSlots();
+const ScheduleAppointmentPage = () => {
+  const [IsDateTimeModalOpen, setIsDateTimeModalOpen] = useState(false);
+  const [timeInput, setTimeInput] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDoctorApproved, setIsDoctorApproved] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axiosJWT.post(`${DOCTOR_API}/getTimeSlots`, {
-          doctorId: doctor.id,
-        });
+        const [statusResponse, timeSlotsResponse] = await Promise.all([
+          axiosJWT.get(`${DOCTOR_API}/status`),
+          fetchTimeSlots(),
+        ]);
 
-        console.log(response, "response");
-        if (response) {
-          setScheduledSlots(response.data.timeSlots);
-        }
+        setIsDoctorApproved(statusResponse.data.doctor.status === "approved");
+        setTimeSlots(timeSlotsResponse);
       } catch (error) {
-        console.log(error, "error");
+        console.error("Error fetching data:", error);
       }
     };
     fetchData();
-  }, [doctor.id]);
+  }, []);
 
-  const handleSlotSelect = (slot: TimeSlot) => {
-    setSelectedSlots((prev) => {
-      if (prev.some((s) => s.start === slot.start && s.end === slot.end)) {
-        return prev.filter((s) => s.start !== slot.start || s.end !== slot.end);
-      } else {
-        return [...prev, slot];
+  const fetchTimeSlots = async () => {
+    try {
+      const response = await axiosJWT.get(`${DOCTOR_API}/timeslots`);
+      return response.data.timeSlots;
+    } catch (error) {
+      console.error("Error fetching time slots:", error);
+      return [];
+    }
+  };
+
+  const openDateTimeModal = () => {
+    setIsDateTimeModalOpen(true);
+  };
+
+  const closeDateTimeModal = () => {
+    setIsDateTimeModalOpen(false);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleTimeInputChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setTimeInput(e.target.value);
+  };
+
+  const handleTimeClick = (time: string, date: string) => {
+    setSelectedTime(time);
+    setSelectedDate(date);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleUploadButtonClick = async () => {
+    try {
+      if (!startDate || !endDate) {
+        showToast("Please select a valid date range.", "error");
+        return;
       }
-    });
-  };
 
-  const handleDaySelect = (day: number) => {
-    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-  };
-  
-
-  const handleConfirmSlots = () => {
-    if (selectedStartDate && selectedEndDate && selectedSlots.length > 0 && selectedDays.length > 0) {
-      const updatedSlots: SelectedTimeSlots = { ...selectedTimeSlots };
-  
-
-      // Extract the day indices from the daysOfWeek array
-      const selectedDayIndices = selectedDays.map(day => daysOfWeek[day].day - 1);
-  
-      const rule = new RRule({
-        freq: RRule.WEEKLY,
-        dtstart: new Date(selectedStartDate),
-        until: new Date(selectedEndDate),
-        byweekday: selectedDayIndices,
-      });
-  
-      const dates = rule.all();
-  
-      dates.forEach((date) => {
-        const day = date.getDay();
-        if (!updatedSlots[day]) {
-          updatedSlots[day] = [];
-        }
-        selectedSlots.forEach((slot) => {
-          if (!updatedSlots[day].some((s) => s.start === slot.start && s.end === slot.end)) {
-            updatedSlots[day].push(slot);
-          }
+      const datesInRange = getDatesInRange(startDate, endDate);
+      const promises = datesInRange.map(async (date) => {
+        const response = await axiosJWT.post(`${DOCTOR_API}/schedule`, {
+          slotTime: timeInput,
+          date: date.toISOString().split("T")[0],
         });
+        return response.data.newTimeSlot;
       });
+
+      const newTimeSlots = await Promise.all(promises);
+      closeDateTimeModal();
+      setTimeSlots([...timeSlots, ...newTimeSlots]);
+      showToast("Time slots added successfully.", "success");
+    } catch (error: any) {
+      showToast(error.response.data.message, "error");
+      console.error("Error uploading time:", error);
+    }
+  };
+
+  const handleDeleteTime = async () => {
+    try {
+      const selectedTimeSlot = timeSlots.find(
+        (timeSlot) =>
+          timeSlot.slotTime === selectedTime && timeSlot.date === selectedDate
+      );
+      if (!selectedTimeSlot) {
+        console.error("Selected time slot not found");
+        return;
+      }
+
+      const response = await axiosJWT.delete(
+        `${DOCTOR_API}/deleteTime/${selectedTimeSlot._id}`
+      );
+      closeDateTimeModal();
+      setTimeSlots(
+        timeSlots.filter((timeSlot) => timeSlot._id !== selectedTimeSlot._id)
+      );
+      showToast(response.data.message, "success");
+    } catch (error) {
+      console.error("Error deleting time:", error);
+    }
+  };
+
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 9; hour <= 21; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const period = hour < 12 ? "AM" : "PM";
+        const formattedHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        const time = `${formattedHour.toString().padStart(2, "0")}:${minute
+          .toString()
+          .padStart(2, "0")} ${period}`;
+        const nextHour = minute === 30 ? (hour === 12 ? 1 : hour + 1) : hour;
+        const nextMinute = minute === 30 ? "00" : "30";
+        const nextPeriod = nextHour < 12 ? "AM" : "PM";
+        const nextFormattedHour =
+          nextHour > 12 ? nextHour - 12 : nextHour === 0 ? 12 : nextHour;
+        const nextTime = `${nextFormattedHour
+          .toString()
+          .padStart(2, "0")}:${nextMinute} ${nextPeriod}`;
+        const label = `${time} - ${nextTime}`;
+        options.push(
+          <option key={time} value={time}>
+            {label}
+          </option>
+        );
+      }
+    }
+    return options;
+  };
+
+  const handleDateChange = (date: Date | null, type: "start" | "end") => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set time to midnight for accurate comparison
   
-      setSelectedTimeSlots(updatedSlots);
-      setSelectedSlots([]);
-      setSelectedDays([]);
+    if (date && date < today) {
+      showToast("Selected date cannot be in the past.", "error");
+      return;
+    }
+  
+    if (type === "start") {
+      setStartDate(date);
     } else {
-      toast.warn("Please select start date, end date, days, and time slots.");
+      setEndDate(date);
     }
   };
-  
-  
-  const handleDelete = (day: number, index: number) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updatedTimeSlots: SelectedTimeSlots = { ...selectedTimeSlots };
-        updatedTimeSlots[day].splice(index, 1);
-        if (updatedTimeSlots[day].length === 0) {
-          delete updatedTimeSlots[day];
+
+  const getDatesInRange = (startDate: Date, endDate: Date): Date[] => {
+    const dates: Date[] = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const formatDate = (isoDate: string | number | Date) => {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString();
+  };
+
+  const EnterDateAndTime = () => {
+    if (isDoctorApproved) {
+      openDateTimeModal();
+    } else {
+      showToast("You need to be approved to be an approved doctor for adding slots.","error")
+    }
+  };
+
+  const renderEventContent = (eventInfo : any) => (
+    <div className="flex items-center justify-between overflow-hidden whitespace-nowrap max-w-full">
+    <div className="flex items-center overflow-hidden whitespace-nowrap max-w-full">
+      <button
+        onClick={() =>
+          handleTimeClick(
+            eventInfo.event.extendedProps.slotTime,
+            eventInfo.event.extendedProps.date
+          )
         }
-        setSelectedTimeSlots(updatedTimeSlots);
-
-        Swal.fire("Deleted!", "Your time slot has been deleted.", "success");
+        className="overflow-hidden whitespace-nowrap text-ellipsis max-w-full"
+      >
+        {eventInfo.event.title}
+      </button>
+    </div>
+    <button
+      className="lg:ml-5 ml-2 hidden lg:inline md:inline xl:inline "
+      onClick={() =>
+        handleTimeClick(
+          eventInfo.event.extendedProps.slotTime,
+          eventInfo.event.extendedProps.date
+        )
       }
-    });
-  };
+    >
+      <FontAwesomeIcon icon={faTrash} className="text-red-500 ml-2" />
+    </button>
+  </div>
+);
 
-  const handleConfirmAvailableSlots = async () => {
-    const doctorId = doctor.id;
-    try {
-      const slotsData = {
-        doctorId,
-        startDate: selectedStartDate,
-        endDate: selectedEndDate,
-        slotTime: selectedTimeSlots,
-      };
-      console.log(".....!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-      
-      const response = await axiosJWT.post(`${DOCTOR_API}/addSlot`, slotsData);
-      console.log('====================================');
-      console.log(response);
-      console.log('====================================');
-      if (response) {
-        showToast("Slots added successfully!", "success");
-        setSelectedSlots([]);
-        setSelectedEndDate(null);
-        setSelectedStartDate(null);
-        setSelectedDays([]);
-        setSelectedTimeSlots({});
-      }
-    } catch (error) {
-      toast.error("Failed to save slots. Please try again.");
+  const calendarEvents = timeSlots.map((timeSlot) => ({
+    title: `${timeSlot.slotTime}`,
+    start: new Date(timeSlot.date),
+    end: new Date(timeSlot.date),
+    color: '#008000',
+    extendedProps: {
+      slotTime: timeSlot.slotTime,
+      date: timeSlot.date   
     }
-  };
-
-  const handleDeleteScheduled = async (_id: string) => {
-    try {
-      await axiosJWT.delete(`${DOCTOR_API}/deleteSlot/${_id}`);
-      setScheduledSlots((prev) => prev.filter((slot) => slot._id !== _id));
-      Swal.fire("Deleted!", "Your time slot has been deleted.", "success");
-    } catch (error) {
-      toast.error("Failed to delete slot. Please try again.");
-    }
-  };
-
-  const handleEdit = (day: number, index: number) => {
-    setEditingSlot({ day, index });
-    setEditedTimeSlot(selectedTimeSlots[day][index]);
-  };
-
-  const handleEditedTimeSlotChange = (field: 'start' | 'end', value: string) => {
-    setEditedTimeSlot((prev) => prev ? { ...prev, [field]: value } : null);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingSlot && editedTimeSlot) {
-      const updatedTimeSlots = { ...selectedTimeSlots };
-      updatedTimeSlots[editingSlot.day][editingSlot.index] = editedTimeSlot;
-      setSelectedTimeSlots(updatedTimeSlots);
-      setEditingSlot(null);
-      setEditedTimeSlot(null);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingSlot(null);
-    setEditedTimeSlot(null);
-  };
-
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedStartDate(e.target.value);
-    if (selectedEndDate && e.target.value > selectedEndDate) {
-      showToast("Start date cannot be after end date.", "error");
-      setSelectedEndDate(null);
-    }
-  };
-  
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedEndDate(e.target.value);
-    if (selectedStartDate && e.target.value < selectedStartDate) {
-      showToast("End date cannot be before start date.", "error");
-      setSelectedStartDate(null);
-    }
-  };
-  
+    
+  }));
 
   return (
-    <>
-      <div className="container mx-auto p-4">
-        <div className="flex flex-col md:flex-row bg-fuchsia-100">
-          <div className="w-full md:w-1/2 p-4">
-            <div className="mb-4">
-              <label className="block mb-2">Start Date:</label>
-              <input
-                type="date"
-                className="w-full p-2 border rounded"
-                value={selectedStartDate || ""}
-                onChange={handleStartDateChange}
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block mb-2">End Date:</label>
-              <input
-                type="date"
-                className="w-full p-2 border rounded"
-                value={selectedEndDate || ""}
-                onChange={handleEndDateChange}
-              />
-            </div>
-            <div className="mb-4">
-              <h2 className="text-lg font-bold mb-2">Select Days</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {daysOfWeek.map((day) => (
-                  <button
-                    key={day.day}
-                    className={`p-2 border rounded ${selectedDays.includes(day.day) ? "bg-fuchsia-500 text-white" : "bg-white"}`}
-                    onClick={() => handleDaySelect(day.day)}
-                  >
-                   {day.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {selectedDays.length > 0 && (
-              <div className="mb-4">
-                <h2 className="text-lg font-bold mb-2">Select Time Slots</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {timeSlots.map((slot, index) => (
-                    <button
-                      key={index}
-                      className={`p-2 border rounded ${selectedSlots.some((s) => s.start === slot.start && s.end === slot.end) ? "bg-fuchsia-500 text-white" : "bg-white"}`}
-                      onClick={() => handleSlotSelect(slot)}
-                    >
-                      {slot.start} - {slot.end}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="text-center">
-              <button className="bg-fuchsia-800 hover:bg-fuchsia-700 text-white font-bold py-2 px-4 rounded" onClick={handleConfirmSlots}>
-                Save Slots
-              </button>
-            </div>
-          </div>
-          <div className="w-full md:w-1/2 p-4">
-            <h2 className="text-xl font-semibold mb-4">Selected Slots</h2>
-            {Object.keys(selectedTimeSlots).length === 0 ? (
-              <p>No slots selected.</p>
-            ) : (
-              <div>
-                {Object.entries(selectedTimeSlots).map(([day, slots]) => (
-                  <div key={day} className="mb-4">
-                    <h3 className="font-bold">{daysOfWeek.find((d) => d.day.toString() === day)?.label}</h3>
-                    <ul>
-                      {slots.map((slot:any, index:any) => (
-                        <li key={index} className="flex justify-between items-center">
-                          <span>{slot.start} - {slot.end}</span>
-                          <div>
-                            <button
-                              className="bg-fuchsia-800 hover:bg-fuchsia-500 text-white font-bold py-1 mb-1 px-2 rounded mr-2"
-                              onClick={() => handleEdit(Number(day), index)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 mb-1 px-2 rounded"
-                              onClick={() => handleDelete(Number(day), index)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        {editingSlot && editedTimeSlot && (
-          <div className="mt-4 p-4 bg-fuchsia-100 border rounded">
-            <h3 className="font-bold mb-2">Edit Time Slot</h3>
-            <div className="mb-2">
-              <label className="block mb-1">Start Time:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded"
-                value={editedTimeSlot.start}
-                onChange={(e) => handleEditedTimeSlotChange('start', e.target.value)}
-              />
-            </div>
-            <div className="mb-2">
-              <label className="block mb-1">End Time:</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded"
-                value={editedTimeSlot.end}
-                onChange={(e) => handleEditedTimeSlotChange('end', e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8 text-center text-gray-900">
+        Schedule Appointment
+      </h1>
+      <div className="bg-white p-6 rounded-lg">
+        <div className="flex flex-col items-center">
+          {/* Calendar Section */}
+          <div className="mb-8 w-full md:w-2/3 lg:w-3/4">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 text-center">
+              Add time and date for Appointments
+            </h2>
+            <div className="flex flex-col items-center">
               <button
-                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-                onClick={handleSaveEdit}
+                onClick={EnterDateAndTime}
+                className="bg-fuchsia-800 text-white py-2 px-4 rounded-lg hover:bg-fuchsia-700 transition duration-300"
               >
-                Save
+                Add time and date
               </button>
-              <button
-                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-                onClick={handleCancelEdit}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="flex justify-center mt-4">
-          <button
-            className="bg-fuchsia-950 hover:bg-fuchsia-700 text-white font-bold py-2 px-4 rounded"
-            onClick={handleConfirmAvailableSlots}
-          >
-            Confirm Available Slots
-          </button>
         </div>
       </div>
+      </div>
+    </div>
 
-      {/* Already Scheduled Slots */}
-      <div className="mt-10">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-800">Already Scheduled Slots</h2>
+      {/* Modal for adding time and date */}
+      <Modal
+        isOpen={IsDateTimeModalOpen}
+        onRequestClose={closeDateTimeModal}
+        contentLabel="Enter Time Slot"
+        ariaHideApp={false}
+        className="flex items-center justify-center min-h-screen"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 z-50"
+      >
+        <div className="bg-white p-6 rounded-lg shadow-lg w-2/3 md:w-1/3 lg:w-1/4 z-60">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 text-center">
+            Add a Time Slot
+          </h2>
+          <div className="mb-4">
+            <label
+              htmlFor="timeInput"
+              className="block text-gray-700 font-semibold mb-2"
+            >
+              Select Time:
+            </label>
+            <select
+              id="timeInput"
+              value={timeInput}
+              onChange={handleTimeInputChange}
+              className="w-full border border-gray-300 p-2 rounded"
+            >
+              <option value="">Select a time</option>
+              {generateTimeOptions()}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label
+              htmlFor="startDate"
+              className="block text-gray-700 font-semibold mb-2"
+            >
+              Select Start Date:
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              min={new Date().toISOString().split("T")[0]} // Set minimum date to today
+              value={startDate ? startDate.toISOString().split("T")[0] : ""}
+              onChange={(e) =>
+                handleDateChange(e.target.value ? new Date(e.target.value) : null, "start")
+              }
+              className="w-full border border-gray-300 p-2 rounded"
+            />
+          </div>
+          <div className="mb-4">
+            <label
+              htmlFor="endDate"
+              className="block text-gray-700 font-semibold mb-2"
+            >
+              Select End Date:
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              min={new Date().toISOString().split("T")[0]} // Set minimum date to today
+              value={endDate ? endDate.toISOString().split("T")[0] : ""}
+              onChange={(e) =>
+                handleDateChange(e.target.value ? new Date(e.target.value) : null, "end")
+              }
+              className="w-full border border-gray-300 p-2 rounded"
+            />
+          </div>
+          <div className="flex justify-between">
+            <Button
+              label="Upload"
+              icon="pi pi-check"
+              onClick={handleUploadButtonClick}
+              className="bg-fuchsia-800 text-white py-2 px-4 rounded hover:bg-fuchsia-700 transition duration-300"
+            />
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={closeDateTimeModal}
+              className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-400 transition duration-300"
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {scheduledSlots.map((slot) => (
-            <div key={slot._id} className="bg-fuchsia-100 border border-blue-300 shadow-lg rounded-lg p-6 ml-16 mb-8">
-              <div className="flex justify-end mb-4">
-                <button
-                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                  onClick={() => handleDeleteScheduled(slot._id)}
-                >
-                  Delete
-                </button>
-              </div>
-              <p className="text-black mb-2">
-                Start Date:{" "}
-                <strong className="text-red-900 text-xl">
-                  {moment(slot.startDate).format("MMM D, YYYY")}
-                </strong>
-              </p>
-              <p className="text-black mb-2">
-                End Date:{" "}
-                <strong className="text-red-900 text-xl">
-                  {moment(slot.endDate).format("MMM D, YYYY")}
-                </strong>
-              </p>
-              <ul className="list-disc list-inside">
-                {slot.slots.map((daySlot) => (
-                  <div key={daySlot._id} className="mb-4">
-                    <h3 className="font-bold">
-                      {daysOfWeek.find((d) => d.day === daySlot.day)?.label}
-                    </h3>
-                    {daySlot.times.map((time, index) => (
-                      <li key={index} className="text-gray-600">
-                        {time.start} - {time.end}
-                      </li>
-                    ))}
-                  </div>
-                ))}
-              </ul>
-            </div>
-          ))}
+      </Modal>
+
+      {/* Modal for deleting time slot */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onRequestClose={closeDateTimeModal}
+        contentLabel="Delete Time Slot"
+        ariaHideApp={false}
+        className="flex items-center justify-center min-h-screen"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 z-50"
+      >
+        <div className="bg-white p-6 rounded-lg shadow-lg w-2/3 md:w-1/3 lg:w-1/4 z-60">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 text-center">
+            Delete Time Slot
+          </h2>
+          <p className="mb-4 text-gray-700">
+            Are you sure you want to delete the time slot "{selectedTime}" on "
+            {formatDate(selectedDate)}"?
+          </p>
+          <div className="flex justify-between">
+            <Button
+              label="Delete"
+              icon="pi pi-check"
+              onClick={handleDeleteTime}
+              className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-400 transition duration-300"
+            />
+            <Button
+              label="Cancel"
+              icon="pi pi-times"
+              onClick={closeDateTimeModal}
+              className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-400 transition duration-300"
+            />
+          </div>
         </div>
-      </div>
-    </>
+      </Modal>
+      
+
+      {/* Full Calendar */}
+      <Suspense fallback={<div>Loading...</div>}>
+      <div className="mx-auto sm:w-full md:w-full lg:w-2/3 xl:w-3/4 bg-white shadow-lg p-6 rounded-lg">
+          <FullCalendar
+            plugins={[dayGridPlugin,timeGridPlugin,interactionPlugin]}
+            initialView="dayGridMonth"
+            events={calendarEvents}
+            eventContent={renderEventContent}
+            eventClick={(info) =>
+              handleTimeClick(
+                info.event.extendedProps.slotTime,
+                info.event.extendedProps.date
+              )
+            }
+            // dateClick={(info) => handleMoreClick(info.dateStr)}
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,dayGridWeek,dayGridDay'
+            }}
+            displayEventTime={false} // Disable event time display
+            contentHeight="auto"
+            
+          />
+        </div>
+      </Suspense>
+      
+    </div>
+    
   );
 };
 
-export default DoctorCalendar;
+export default ScheduleAppointmentPage;

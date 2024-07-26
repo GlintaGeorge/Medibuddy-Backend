@@ -1,256 +1,106 @@
 import React, { useEffect, useState } from "react";
 import { USER_API } from "../../constants";
 import axiosJWT from "../../utils/axiosService";
-import { useParams } from "react-router-dom";
 import Modal from "react-modal";
 import showToast from "../../utils/toaster";
-import DatePicker from "react-datepicker";
+import { useDispatch } from "react-redux";
 import "react-datepicker/dist/react-datepicker.css";
-import { Calendar } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Navigate, useNavigate } from "react-router-dom";
-import {  useSelector } from "react-redux";
-import { RootState } from "../../redux/reducer/reducer";
+import { useParams, useNavigate } from "react-router-dom";
+// import {  useSelector } from "react-redux";
+// import { RootState } from "../../redux/reducer/reducer";
+import {
+  clearAppointmentData,
+  setAppointmentData,
+} from "../../redux/slices/bookingSlice";
+import { DepartmentInterface } from "../../types/departmentInterface";
 
 
 const AppointmentOnlineBookingPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [doctor, setDoctor] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+  const [departments, setDepartments] = useState<{ [key: string]: string }>({});
+  const [timeSlots, setTimeSlots] = useState<any[]>([]);
+  const [dates, setDates] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  // const userId = useSelector((state: RootState) => state.UserSlice.id);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
   const [patientDetails, setPatientDetails] = useState({
     patientName: "",
     patientAge: "",
-    patientNumber: "",
     patientGender: "",
+    patientNumber: "",
+    patientProblem: "",
   });
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [timeSlots, setTimeSlots] = useState<string[]>([]);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
-  const [existingPatientDetails, setExistingPatientDetails] =
-    useState<any>(null);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const userId = useSelector((state: RootState) => state.UserSlice.id);
+ 
+  // State to track whether time slot and package are selected
+  const [isTimeSlotSelected, setIsTimeSlotSelected] = useState(false);
 
-
-
-  console.log(USER_API,"")
   useEffect(() => {
-    const fetchDoctorDetails = async () => {
+    const fetchDoctorsAndDepartments = async () => {
       try {
-        const response = await axiosJWT.get(`${USER_API}/doctor/${id}`);
+        const response = await axiosJWT.get(`${USER_API}/doctors/${id}`);
         setDoctor(response.data.doctor);
-      } catch (error) {
-        console.error("Error fetching doctor details:", error);
-      }
-    };
-    fetchDoctorDetails();
-  }, [id]);
 
-  useEffect(() => {
-    setSelectedDate(new Date());
-  }, []);
+        // Fetch departments
+        const deptResponse = await axiosJWT.get(`${USER_API}/departments`);
+        const listedDepartments = deptResponse.data.departments.filter(
+          (dept: DepartmentInterface) => dept.isListed
+        );
 
-  useEffect(() => {
-    const fetchTimeSlots = async () => {
-      if (selectedDate) {
+        const departmentMap = listedDepartments.reduce(
+          (acc: { [key: string]: string }, dept: DepartmentInterface) => {
+            acc[dept._id] = dept.departmentName;
+            return acc;
+          },
+          {}
+        );
+
+        setDepartments(departmentMap);
+        console.log(isTimeSlotSelected)
+
+        // Fetch scheduled dates inside fetchDoctorsAndDepartments
         try {
-          const response = await axiosJWT.get(
-            `${USER_API}/timeslots/${id}?date=${selectedDate.toISOString()}`
+          const datesResponse = await axiosJWT.get(
+            `${USER_API}/time-slots/${id}/dates`
+          );
+          // Parse dates to format them as needed
+          const formattedDates: string[] = datesResponse.data.dateSlots.map(
+            (date: any) => {
+              const splittedDate = date.date.split("T")[0]; // Split date and time, and take only the date part
+              return splittedDate;
+            }
           );
 
-          if (response.data.timeSlots.length > 0) {
-            const selectedDay = selectedDate.getDay();
-            const timeSlotsForDay = response.data.timeSlots[0].slots.find(
-              (slot: any) => slot.day === selectedDay
-            );
-            setTimeSlots(
-              timeSlotsForDay
-                ? timeSlotsForDay.times.map(
-                    (time: any) => `${time.start} - ${time.end}`
-                  )
-                : []
-            );
-          } else {
-            setTimeSlots([]);
-          }
-        } catch (error) {
-          console.error("Error fetching time slots:", error);
-        }
-      }
-    };
-    fetchTimeSlots();
-  }, [selectedDate, id]);
+          // const uniqueDates: string[] = Array.from(new Set(formattedDates));
+          // Filter out past dates and sort in ascending order
+          const currentDate = new Date().toISOString().split("T")[0];
+          const futureDates = formattedDates.filter(
+            (date) => date >= currentDate
+          );
+          const uniqueDates = Array.from(new Set(futureDates)).sort();
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const response = await axiosJWT.get(`${USER_API}/bookings/${userId}`);
-        setBookings(response.data.data.bookingDetails);
+          setDates(uniqueDates);
+        } catch (error) {
+          console.error("Error fetching scheduled dates:", error);
+        }
       } catch (error) {
-        console.error("Error fetching bookings:", error);
+        console.error("Error fetching doctor n department details:", error);
       }
     };
-    fetchBookings();
+
+    fetchDoctorsAndDepartments();
   }, [id]);
 
-  function stripDate(dateString: any) {
-    const date = new Date(dateString);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  }
-
-  const stripePromise = loadStripe(
-    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-  );
-
-  const handleBookAppointment = async () => {
-    try {
-        
-      const appointmentData = {
-        doctorId: id,
-        patientDetails: existingPatientDetails || patientDetails,
-        consultationType: "Online",
-        fee: 300,
-        paymentStatus: "Pending",
-        appoinmentStatus: "Booked",
-        appoinmentCancelReason: "",
-        date: stripDate(selectedDate),
-        timeSlot: selectedTimeSlot,
-      };
-      console.log(appointmentData,"wwwwwwwwwwwwwwwwwwwwwwww")
-      
-      const response = await axiosJWT.post(
-        `${USER_API}/appointments`,{
-        ...appointmentData,
-        userId
-
-    });
-      
-
-      if (response.data.id) {
-        const stripe = await stripePromise;
-        const result = await stripe?.redirectToCheckout({
-          sessionId: response.data.id,
-        });
-        if (result?.error) console.error(result.error);
-
-        console.log(USER_API,"?????????????????????????????????????????????????????/")
-        const bookingId = response.data.booking.bookingId;
-        Navigate({
-          to: `${USER_API}/payment_status/${bookingId}?success=true`,
-        });
-      } else {
-        showToast(response.data.message, "error");
-      }
-    } catch (error) {
-      console.error("Error booking appointment:", error);
-      showToast("Error booking appointment. Please try again later.", "error");
-    }
-  };
-
-// const handleBookAppointment = async () => {
-//     try {
-//         const appointmentData = {
-//             doctorId: id,
-//             patientDetails: existingPatientDetails || patientDetails,
-//             consultationType: "Online",
-//             fee: 300,
-//             paymentStatus: "Pending",
-//             appoinmentStatus: "Booked",
-//             appoinmentCancelReason: "",
-//             date: stripDate(selectedDate),
-//             timeSlot: selectedTimeSlot,
-//         };
-
-//         const response = await axiosJWT.post(
-//             `${USER_API}/appointments`,
-//             appointmentData
-//         );
-
-//         if (response.data.id) {
-//             const stripe = await stripePromise;
-//             const result = await stripe?.redirectToCheckout({
-//                 sessionId: response.data.id,
-//             });
-//             if (result?.error) console.error(result.error);
-
-//             const bookingId = response.data.booking.bookingId;
-//             // Use navigate function instead of Navigate component
-//             navigate(`/payment_status/${bookingId}?success=true`);
-//         } else {
-//             showToast(response.data.message, "error");
-//         }
-//     } catch (error) {
-//         console.error("Error booking appointment:", error);
-//         showToast("Error booking appointment. Please try again later.", "error");
-//     }
-// };
-
-
-  const handleWalletPayment = async () => {
-    try {
-      const appointmentData = {
-        doctorId: id,
-        patientDetails: existingPatientDetails || patientDetails,
-        consultationType: "Online",
-        fee: 300,
-        paymentStatus: "Pending",
-        appoinmentStatus: "Booked",
-        appoinmentCancelReason: "",
-        date: stripDate(selectedDate),
-        timeSlot: selectedTimeSlot,
-      };
-
-      const response = await axiosJWT.post(
-        `${USER_API}/walletPayment`,
-        appointmentData
-      );
-
-      if (response.data.success) {
-        const bookingId = response.data.createBooking._id;
-
-        // Update wallet amount before navigating
-
-        navigate(`/payment_status/${bookingId}?success=true`);
-      } else {
-        showToast(response.data.message, "error");
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const handleNextStepBookAppointment = () => {
+  const handleBookAppointment = () => {
+    // Check if both time slot and package are selected
     if (selectedTimeSlot) {
-      setIsModalOpen(true);
+      setIsDetailsModalOpen(true);
     } else {
-      showToast("Please select a time slot", "error");
-    }
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === "patientName") {
-      const formattedValue = value
-        .replace(/[^a-zA-Z ]/g, "")
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-      setPatientDetails({ ...patientDetails, [name]: formattedValue });
-    } else if (name === "patientAge") {
-      const formattedValue = value.replace(/\D/g, "");
-      setPatientDetails({ ...patientDetails, [name]: formattedValue });
-    } else if (name === "patientNumber") {
-      const formattedValue = value.replace(/\D/g, "").slice(0, 10);
-      setPatientDetails({ ...patientDetails, [name]: formattedValue });
-    } else {
-      setPatientDetails({ ...patientDetails, [name]: value });
+      showToast("Please select both time slot and package.", "error");
     }
   };
 
@@ -259,33 +109,174 @@ const AppointmentOnlineBookingPage: React.FC = () => {
     setPatientDetails({ ...patientDetails, [name]: value });
   };
 
-  const handleAddDetails = () => {
-    setIsDetailsModalOpen(true);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPatientDetails({ ...patientDetails, [name]: value });
   };
 
-  const handleSelectExisting = (patientDetails: any) => {
-    setIsDetailsModalOpen(true);
-    setPatientDetails(patientDetails);
-    setIsModalOpen(false);
-  };
+  const handleAppointmentConfirmation = async () => {
+    try {
+      const {
+        patientName,
+        patientAge,
+        patientNumber,
+        patientGender,
+        patientProblem,
+      } = patientDetails;
 
-  const handleAddPatientDetails = () => {
-    if (
-      patientDetails.patientName &&
-      patientDetails.patientAge &&
-      patientDetails.patientGender
-    ) {
-      setIsDetailsModalOpen(false);
-      setIsModalOpen(false);
-      setExistingPatientDetails(patientDetails);
-    } else {
-      showToast("Please fill in all fields", "error");
+      // Validation checks
+      const nameRegex = /^[a-zA-Z]+$/; // Regex for name validation
+      const ageRegex = /^\d+$/; // Regex for age validation
+      const numberRegex = /^\d{10}$/; // Regex for phone number validation
+
+      // Validate patient name
+      if (!patientName || !nameRegex.test(patientName)) {
+        showToast("Please enter a valid name .", "error");
+        return;
+      }
+
+      // Validate patient age
+      if (
+        !patientAge ||
+        !ageRegex.test(patientAge) ||
+        parseInt(patientAge) < 3
+      ) {
+        showToast(
+          "Please enter a valid age (numeric value, at least 3 years old).",
+          "error"
+        );
+        return;
+      }
+
+      // Validate patient number
+      if (!patientGender) {
+        showToast("Please Select a gender ", "error");
+        return;
+      }
+
+      // Validate patient number
+      if (!patientNumber || !numberRegex.test(patientNumber)) {
+        showToast(
+          "Please enter a valid phone number (10 digits, numbers only).",
+          "error"
+        );
+        return;
+      }
+
+      // Validate patient problem
+      if (!patientProblem.trim()) {
+        showToast("Please enter the patient's problem.", "error");
+        return;
+      }
+
+      const appointmentData = {
+        doctorId: id || "",
+        doctorName: doctor.doctorName,
+        doctorImage: doctor.profileImage,
+        fee: 200,
+        paymentStatus: "Pending",
+        appoinmentStatus: "Booked",
+        appoinmentCancelReason: "",
+        timeSlot: selectedTimeSlot || "",
+        date: selectedDate,
+        patientName: patientName,
+        patientAge: parseInt(patientAge, 10),
+        patientGender: patientGender,
+        patientNumber: patientNumber,
+        patientProblem: patientProblem,
+      };
+      console.log("appointmentData data:", appointmentData);
+
+      
+      dispatch(clearAppointmentData());
+      dispatch(setAppointmentData(appointmentData));
+      navigate(`/user/checkout/${doctor?._id}`);
+
+      // showToast('Appointment booked successfully.', 'success');
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+      showToast("Error booking appointment. Please try again later.", "error");
     }
   };
 
-  const handleTimeSlotSelection = (slot: string) => {
-    setSelectedTimeSlot(selectedTimeSlot === slot ? null : slot);
+  const handleTimeSlotSelection = (timeSlot: string) => {
+    setIsTimeSlotSelected(true); // Update time slot selection state
+    setSelectedTimeSlot(timeSlot);
   };
+
+  const handleDateSelection = (date: string) => {
+    // Deselect the date if it's already selected
+    if (selectedDate === date) {
+      setSelectedDate("");
+      setSelectedDate(date);
+    } else {
+      setSelectedDate(date);
+      setIsTimeSlotSelected(false); // Reset time slot selection when date changes
+      fetchTimeSlots(date);
+    }
+  };
+
+  const fetchTimeSlots = async (selectedDate: string) => {
+    try {
+      const response = await axiosJWT.get(`${USER_API}/time-slots/${id}/dates`, {
+        params: {
+          date: selectedDate,
+        },
+      });
+  
+      const timeSlots = response.data.timeSlots;
+      const currentTime = new Date();
+      // Format the selectedDate and currentTime for comparison
+      const selectedDateTime = new Date(selectedDate);
+      selectedDateTime.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+      const isToday = selectedDateTime.getTime() === new Date().setHours(0, 0, 0, 0);
+  
+      let filteredTimeSlots = timeSlots;
+  
+      if (isToday) {  
+        filteredTimeSlots = timeSlots.filter((slot: any) => {
+          const slotTime = new Date(`${selectedDate} ${slot.slotTime}`);
+          return slotTime > currentTime;
+        });
+      }
+  
+      setTimeSlots(filteredTimeSlots);
+    } catch (error) {
+      console.error('Error fetching time slots:', error);
+    }
+  };
+  
+
+  const handleAddDetails = () => {
+    handleBookAppointment();
+  };
+
+  const formatDate = (dateString: string | number | Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    };
+    const date = new Date(dateString);
+    const formattedDate = date
+      .toLocaleDateString("en-US", options)
+      .toUpperCase();
+    const [weekday, day, month] = formattedDate.split(" ");
+    return { weekday, day, month };
+  };
+
+  const handleLeftArrowClick = () => {
+    setVisibleStartIndex(Math.max(visibleStartIndex - 1, 0));
+  };
+
+  const handleRightArrowClick = () => {
+    setVisibleStartIndex(Math.min(visibleStartIndex + 1, dates.length - 6));
+  };
+
+  const visibleDates = dates.slice(visibleStartIndex, visibleStartIndex + 6);
+
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -301,8 +292,9 @@ const AppointmentOnlineBookingPage: React.FC = () => {
             />
             <div className="ml-0 md:ml-8 text-center md:text-left">
               <h2 className="text-xl font-bold">{doctor.doctorName}</h2>
-              <p>{doctor.department}</p>
-              <p className="text-green-600 font-semibold">Verified</p>
+              <p>              {departments[doctor?.department as string]}
+</p>
+             
               <div className="text-gray-800 bg-blue-100 p-4 rounded-md mt-5 font-bold">
                 <p className="mb-2">Consultation: Online</p>
                 <p>Fee: 300/-</p>
@@ -314,109 +306,145 @@ const AppointmentOnlineBookingPage: React.FC = () => {
             <h1 className="ml-4 mt-6 font-medium text-blue-950 text-lg">
               Select The Scheduled Date
             </h1>
-            <DatePicker
-              selected={selectedDate}
-              onChange={(date: Date | null) => setSelectedDate(date)}
-              className="rounded-lg px-4 py-2 w-full mt-2"
-              dateFormat="MM/dd/yyyy"
-              minDate={new Date()}
-              placeholderText="Select Date"
-              customInput={
-                <div className="relative">
-                  <input
-                    className="border shadow-2xl border-gray-900 rounded-lg px-4 py-2 w-full font-medium text-gray-900"
-                    value={selectedDate ? selectedDate.toDateString() : ""}
-                    readOnly
-                    placeholder="Select Date"
-                  />
-                  <Calendar className="absolute right-3 top-3 text-gray-800 cursor-pointer mr-3" />
-                </div>
-              }
-            />
-          </div>
-  
-          {timeSlots.length > 0 ? (
-            <div className="max-w-md mx-auto lg:mx-0 lg:mr-auto lg:w-1/3">
-              <h1 className="text-2xl font-bold mb-4">Schedule Time Slots</h1>
-              <div className="grid grid-cols-2 gap-4">
-                {timeSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    className={`w-full rounded-md py-3 border border-blue-900 px-4 text-sm font-medium ${
-                      selectedTimeSlot === slot
-                        ? "bg-fuchsia-900 text-white"
-                        : "bg-white text-gray-700 hover:bg-gray-200"
-                    } shadow-md`}
-                    onClick={() => handleTimeSlotSelection(slot)}
-                  >
-                    {slot}
-                  </button>
-                ))}
+            <div className="flex items-center">
+              <div
+                className={`cursor-pointer text-2xl ${
+                  visibleStartIndex === 0 ? "text-gray-400" : "text-black"
+                }`}
+                onClick={
+                  visibleStartIndex !== 0 ? handleLeftArrowClick : undefined
+                }
+                style={{
+                  color: visibleStartIndex === 0 ? "#A0A0A0" : "#000000",
+                }}
+              >
+                &lt;
+              </div>
+              <div className="grid grid-cols-6 gap-4 mx-4">
+                {visibleDates &&
+                  visibleDates.map((date, index) => {
+                    const { weekday, day, month } = formatDate(date);
+                    const isSelected = selectedDate === date;
+                    return (
+                      <div
+                        key={index}
+                        className={`px-8 py-2 rounded-lg shadow-md flex flex-col items-center cursor-pointer ${
+                          isSelected
+                            ? "border-2 border-fuchsia-800 bg-fuchsia-700 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-200"
+                        }`}
+                        onClick={() => handleDateSelection(date)}
+                      >
+                        <input
+                          type="radio"
+                          id={`dateSlot${index}`}
+                          name="dateSlot"
+                          value={date}
+                          hidden
+                        />
+                        <label
+                          htmlFor={`dateSlot${index}`}
+                          className="text-center"
+                        >
+                          <div
+                            className={`text-sm ${
+                              isSelected ? "text-white" : "text-gray-500"
+                            }`}
+                          >
+                            {weekday}
+                          </div>
+                          <div
+                            className={`text-2xl font-bold ${
+                              isSelected ? "text-white" : "text-black"
+                            }`}
+                          >
+                            {month}
+                          </div>
+                          <div
+                            className={`text-sm ${
+                              isSelected ? "text-white" : "text-gray-500"
+                            }`}
+                          >
+                            {day}
+                          </div>
+                        </label>
+                      </div>
+                    );
+                  })}
+              </div>
+              <div
+                className={`cursor-pointer text-2xl ${
+                  visibleStartIndex === dates.length - 5
+                    ? "text-gray-400"
+                    : "text-black"
+                }`}
+                onClick={
+                  visibleStartIndex !== dates.length - 5
+                    ? handleRightArrowClick
+                    : undefined
+                }
+                style={{
+                  color:
+                    visibleStartIndex === dates.length - 5
+                      ? "#A0A0A0"
+                      : "#000000",
+                }}
+              >
+                &gt;
               </div>
             </div>
-          ) : (
-            <>
-              <p className="text-red-600 mt-4 text-lg">The doctor is on leave</p>
-              <p className="text-red-600 mt-4">
-                No slots scheduled for the selected date.
-              </p>
-            </>
-          )}
+          </div>
   
-          <Modal
-            isOpen={isModalOpen}
-            onRequestClose={handleModalClose}
-            style={{
-              overlay: {
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              },
-              content: {
-                position: "relative",
-                top: "auto",
-                left: "auto",
-                right: "auto",
-                bottom: "auto",
-                width: "90%",
-                maxWidth: "400px",
-                borderRadius: "8px",
-                boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.2)",
-                padding: "20px",
-                margin: "0 auto",
-              },
-            }}
-          >
-            <button
-              onClick={handleModalClose}
-              className="absolute top-0 right-0 m-4 bg-gray-400 p-2 rounded"
-            >
-              close
-            </button>
-            <h2 className="text-xl font-bold mb-4">Patient Details</h2>
-            {bookings.length > 0 ? (
-              bookings.map((booking, index) => (
-                <div
-                  key={index}
-                  className="border rounded-lg p-4 mb-4 cursor-pointer"
-                  onClick={() => handleSelectExisting(booking)}
-                >
-                  <p>Name: {booking.patientName}</p>
-                  <p>Age: {booking.patientAge}</p>
-                  <p>Gender: {booking.patientGender}</p>
-                </div>
-              ))
-            ) : (
-              <p className="mb-4">No existing patient details</p>
-            )}
+           {/* Time Slots */}
+           <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4">Available Time Slots</h2>
+            <div className="grid grid-cols-9 gap-4">
+              {timeSlots &&
+                timeSlots.map((slot: any, index: number) => (
+                  <div
+                    key={index}
+                    className={`w-full rounded-md py-3 border border-gray-900 px-4 text-sm font-medium ${
+                      selectedTimeSlot === slot.slotTime
+                      ? "bg-fuchsia-800 text-white"
+                      : "bg-white text-gray-600 hover:bg-gray-200"
+                       
+                    } shadow-md`}
+                    onClick={() => handleTimeSlotSelection(slot.slotTime)}
+                  >
+                    <div>
+                     
+                      <label
+                        htmlFor={`timeSlot${index}`}
+                        className="text-lg font-bold"
+                      >
+                        {slot.slotTime}
+                      </label>
+                      <p
+                        className={
+                          slot.available ? "text-green-700" : "text-red-600"
+                        }
+                      >
+                        {slot.available ? "Available" : "Not Available"}
+                      </p>
+                      {/* Render availability status */}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+
+            {/* Book Appointment Button */}
+            <div className="flex justify-between mb-4">
             <button
               onClick={handleAddDetails}
-              className="bg-fuchsia-950 text-white py-2 px-4 rounded-lg mr-2"
+              className="bg-fuchsia-800 text-white py-2 px-4 rounded-lg"
             >
-              Add Details +
+              Book an Appointment
             </button>
-          </Modal>
+          </div>
+
+
   
           <Modal
             isOpen={isDetailsModalOpen}
@@ -470,6 +498,7 @@ const AppointmentOnlineBookingPage: React.FC = () => {
                 className="border border-gray-400 rounded-lg px-4 py-2 w-full mt-1"
               />
             </div>
+
             <div className="mb-4">
               <label className="block mb-1">Gender:</label>
               <select
@@ -484,65 +513,47 @@ const AppointmentOnlineBookingPage: React.FC = () => {
                 <option value="others">Others</option>
               </select>
             </div>
+
+            <div className="mb-4">
+              <label htmlFor="phoneNumber" className="block mb-2">
+                Phone Number
+              </label>
+              <input
+                type="text"
+                required
+                id="phoneNumber"
+                name="patientNumber"
+                value={patientDetails.patientNumber}
+                onChange={handleInputChange}
+                className="border rounded-lg px-4 py-2 w-full"
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="problem" className="block mb-2">
+                Problem
+              </label>
+              <input
+                id="problem"
+                required
+                name="patientProblem"
+                value={patientDetails.patientProblem}
+                onChange={handleInputChange}
+                className="border rounded-lg px-4 py-2 w-full"
+              />
+            </div>
             <button
-              onClick={handleAddPatientDetails}
-              className="bg-fuchsia-950 text-white py-2 px-4 rounded-lg mt-4"
+              onClick={handleAppointmentConfirmation}
+              className="bg-green-700 text-white py-2 px-4 rounded-lg"
             >
-              Submit
+              Book Appointment
             </button>
           </Modal>
         </div>
       )}
   
-      <div className="mt-8">
-        {existingPatientDetails ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-gray-500 p-4 rounded-md">
-              <h2 className="font-bold mb-3 text-lg">Patient Details</h2>
-              <p>Name: {existingPatientDetails.patientName}</p>
-              <p>Age: {existingPatientDetails.patientAge}</p>
-              <p>Gender: {existingPatientDetails.patientGender}</p>
-            </div>
-          </div>
-        ) : (
-          <div></div>
-        )}
-      </div>
+      
   
-      <div className="flex flex-col md:flex-row justify-start mt-8">
-        {existingPatientDetails ? (
-          <>
-            <button
-              onClick={handleBookAppointment}
-              disabled={timeSlots.length === 0}
-              className={`bg-fuchsia-950 text-white py-2 px-4 rounded-lg mb-4 md:mb-0 ${
-                timeSlots.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              Online Payment
-            </button>
-            <button
-              onClick={handleWalletPayment}
-              disabled={timeSlots.length === 0}
-              className={`bg-fuchsia-950 text-white py-2 px-4 rounded-lg md:ml-5 ${
-                timeSlots.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              Wallet Payment
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={handleNextStepBookAppointment}
-            disabled={timeSlots.length === 0}
-            className={`bg-fuchsia-950 text-white py-2 px-4 rounded-lg ${
-              timeSlots.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            Book an Appointment
-          </button>
-        )}
-      </div>
+    
     </div>
   );
 };

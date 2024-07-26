@@ -10,7 +10,7 @@ import axios from "axios";
 import { useAppDispatch } from "../../redux/store/Store";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
-import { setDoctor,setTokens } from '../../redux/slices/DoctorSlice';
+import { setDoctor } from '../../redux/slices/DoctorSlice';
 import { setItemToLocalStorage } from '../../utils/Set&Get';
 
 const Login: React.FC = () => {
@@ -31,7 +31,6 @@ const Login: React.FC = () => {
           // const access_token = data.accessToken
           const { doctorName:name, role, _id } = data.doctor;
           const { message, access_token, refresh_token } = data;
-          console.log(data,"qwertyuiopasdfghjklzxcvbnm")
           dispatch(setDoctor({ isAuthenticated: true, name, role,id:_id }));
           setItemToLocalStorage('access_token', access_token); 
           setItemToLocalStorage("refresh_token",refresh_token)
@@ -41,13 +40,16 @@ const Login: React.FC = () => {
           }, 1000);
         })
         .catch(({ response }) => {
+
           const { message } = response.data;
           setIsSubmitting(false);
+          console.log(message)
           showToast(message, "error");
+
         });
     },
   });
-
+console.log(isSubmitting)
   const handleGooglSignIn = (doctor: {
     doctorName: string;
     email: string;
@@ -67,9 +69,9 @@ const Login: React.FC = () => {
 
         dispatch(setDoctor({
             isAuthenticated: true, name: user.doctorName, role: user.role,
-            doctor: undefined
+            id: user._id
         }));
-        navigate("/doctor");
+        navigate("/home");
       })
       .catch(({ response }) => showToast(response.data.message, "error"));
   };

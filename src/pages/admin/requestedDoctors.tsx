@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminHeader from '../../components/admin/Header&Sidebar/Header';
 import AdminSidebar from '../../components/admin/Header&Sidebar/Sidebar';
-import RequestedDoctorData from '../../components/admin/requestDoctors';
+import RequestedDoctorData from '../../components/admin/RequestDoctors';
 import { DoctorInterface } from '../../types/DoctorInterface';
 import { ADMIN_API } from '../../constants';
 

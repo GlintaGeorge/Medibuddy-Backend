@@ -1,8 +1,8 @@
 import React from 'react'
-import Navbar from '../../components/doctor/navbar/navbar'
-import Banner from '../../components/doctor/banner'
-import Footer from '../../components/doctor/footer/footer'
-import Body from '../../components/doctor/body'
+import Navbar from '../../components/doctor/navbar/Navbar'
+import Banner from '../../components/doctor/Banner'
+import Footer from '../../components/doctor/footer/Footer'
+import Body from '../../components/doctor/Body'
 
 const doctorDashboard:React.FC = () => {
   return (

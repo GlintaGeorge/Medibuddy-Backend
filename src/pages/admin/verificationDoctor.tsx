@@ -1,7 +1,7 @@
 import React from 'react';
 import AdminHeader from '../../components/admin/Header&Sidebar/Header';
 import AdminSidebar from '../../components/admin/Header&Sidebar/Sidebar';
-import DoctorVerificationPage from '../../components/admin/verification';
+import DoctorVerificationPage from '../../components/admin/Verification';
 import useDoctors from '../../hooks/useDoctors';
 
 const VerificationDoctor: React.FC = () => {

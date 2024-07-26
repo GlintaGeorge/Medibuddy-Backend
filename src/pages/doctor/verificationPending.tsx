@@ -10,7 +10,7 @@ const VerificationPending: React.FC = () => {
           Your account is awaiting approval from the admin. Please check back later.
         </p>
         <div className="flex justify-center">
-          <Link to="/" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded">
+          <Link to="/" className="bg-fuchsia-800 hover:bg-fuchsia-700 text-white font-bold py-2 px-8 rounded">
             Go to Home
           </Link>
         </div>

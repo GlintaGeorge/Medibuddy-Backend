@@ -25,11 +25,10 @@ const Register: React.FC = () => {
       description: "",
       experience: "",
       lisenceCertificate: null,
-      consultationType: ""
+      
     },
     validate: validateSignUpUser,
     onSubmit: async ({ name, email, password }) => {
-      console.log("working...");
       
       setIsSubmitting(true);
       try {
@@ -38,7 +37,7 @@ const Register: React.FC = () => {
         showToast(message, "success");
         localStorage.setItem("access_token", accessToken);
         setItemToLocalStorage("userId", newUser._id);
-        navigate("/user/verify_otp");
+        navigate("/verify_otp");
       } catch (error:any) {
         const { message } = error.response.data;
         setIsSubmitting(false);

@@ -1,6 +1,6 @@
 import React from 'react';
 import Navbar from '../../components/user/Navbar/Navbar';
-import AppointmentBookingPage from '../../components/user/onlineBookingPage';
+import AppointmentBookingPage from '../../components/user/OnlineBookingPage';
 
 
 

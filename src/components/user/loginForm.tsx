@@ -42,7 +42,7 @@ const Login: React.FC = () => {
           navigate("/");
         })
         .catch(({ response }) => {
-          console.log(response);
+          console.log(response,);
           setIsSubmitting(false);
           showToast(response?.data?.message, "error");
         });
@@ -103,7 +103,7 @@ const Login: React.FC = () => {
                 {formik.errors.password && formik.touched.password && (
                   <div className="text-red-500">{formik.errors.password}</div>
                 )}
-              <Link to="/user/forgot-password" className="text-gray-500 hover:underline block ml-48">
+              <Link to="/forgot-password" className="text-gray-500 hover:underline block ml-48">
               Forgot Password?
               </Link>
             </div>
@@ -112,7 +112,7 @@ const Login: React.FC = () => {
           </form>
           <p className="mt-2 text-xs text-gray-700 ml-24">
             Don,t have an account?</p>
-            <Link to="/user/register" className="text-blue-500 mt-2 text-xs ml-28 underline">
+            <Link to="/register" className="text-blue-500 mt-2 text-xs ml-28 underline">
               Create Account
             </Link>
           

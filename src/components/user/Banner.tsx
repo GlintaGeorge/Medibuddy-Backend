@@ -34,6 +34,7 @@ const Banner: React.FC = () => {
           For Better Health
         </h2>
       </div>
+      
     </div>
   );
 };

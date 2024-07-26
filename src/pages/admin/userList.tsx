@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import UserData from "../../components/admin/userData";
+import UserData from "../../components/admin/UserData";
 import useUsers from "../../hooks/useUsers";
 import AdminHeader from '../../components/admin/Header&Sidebar/Header';
 import AdminSidebar from '../../components/admin/Header&Sidebar/Sidebar';

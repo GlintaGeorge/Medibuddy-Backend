@@ -1,9 +1,9 @@
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import axiosJWT from "../utils/axiosService";
 import showToast from "../utils/toaster";
 import { DoctorInterface } from "../types/DoctorInterface";
 import { DOCTOR_API, nameRegex, phoneRegex } from "../constants";
-import { uploadImagesToCloudinary, uploadCertificateToCloudinary } from "../Api/uploadImages";
+import { uploadImagesToCloudinary, uploadCertificateToCloudinary } from "../Services/uploadImages";
 import { useNavigate } from 'react-router-dom';
 
 const useDoctorProfile = () => {
@@ -47,7 +47,6 @@ const useDoctorProfile = () => {
         const { data } = await axiosJWT.get(DOCTOR_API + "/profile");
         
         const { doctor } = data;
-        console.log(doctor,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
         setFormData((prev) => ({
           ...prev,
@@ -63,6 +62,7 @@ const useDoctorProfile = () => {
           status: doctor?.status
         }));
         setImagePreview(doctor?.profileImage || "");
+        setProfile(doctor?.profileImage || "")
         setCertificatePreview(doctor?.lisenceCertificate || "");
       } catch (error) {
         console.error("Error fetching profile data:", error);
@@ -73,7 +73,6 @@ const useDoctorProfile = () => {
     const fetchDepartments = async () => {
       try {
         const { data } = await axiosJWT.get(DOCTOR_API + "/departments");
-        console.log("Fetched departments::::::::::::::::::::::::::::::::::::::::", data.departments);
 
         setDepartments(data.departments);
       } catch (error) {
@@ -166,6 +165,8 @@ const useDoctorProfile = () => {
 
   const handleVerify = () => {
     setIsVerified(true);
+    console.log(isVerified)
+
   };
 
   return {

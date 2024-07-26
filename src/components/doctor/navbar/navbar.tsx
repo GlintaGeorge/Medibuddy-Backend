@@ -5,7 +5,6 @@ import { RootState } from '../../../redux/reducer/reducer';
 import { clearDoctor } from '../../../redux/slices/DoctorSlice';
 import { useAppDispatch } from '../../../redux/store/Store';
 import showToast from '../../../utils/toaster';
-// import { error } from 'console';
 import logo from '../../../assets/images/logo.png'; // Import the logo image
 
 // Navbar component
@@ -14,6 +13,8 @@ const Navbar: React.FC = () => {
   const doctor = useSelector((state: RootState) => state.DoctorSlice);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+
+  
 
   // Handle logout function
   const handleLogout = () => {

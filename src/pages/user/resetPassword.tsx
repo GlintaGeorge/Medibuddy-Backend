@@ -20,7 +20,7 @@ const ResetPasswordForm = () => {
                 .post(USER_API + `/reset_password/${id}`, { password })
                 .then(({ data }) => {
                     showToast(data.message, "success");
-                    navigate("/user/login");
+                    navigate("/login");
                 })
                 .catch(({ response }) => showToast(response.data.message, "error"));
         },

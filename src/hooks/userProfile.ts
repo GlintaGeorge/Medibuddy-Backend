@@ -3,7 +3,7 @@ import axiosJWT from "../utils/axiosService";
 import showToast from "../utils/toaster";
 import { UserInterface } from "../types/userInterface";
 import { USER_API, nameRegex, phoneRegex } from "../constants";
-import {uploadImagesToCloudinary} from "../Api/uploadImages";
+import {uploadImagesToCloudinary} from "../Services/uploadImages";
 
 
 const useProfile = () => {
@@ -26,17 +26,13 @@ const useProfile = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('====================================');
-    console.log('profile');
-    console.log('====================================');
+    
     
     axiosJWT
       .get(USER_API + "/profile")
       .then(({ data }) => {
         const { user } = data;
-        console.log('====================================');
-        console.log(user);
-        console.log('====================================');
+        
         setProfile(user);
         setFormData((prev) => ({
           ...prev,

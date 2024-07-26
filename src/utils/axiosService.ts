@@ -13,14 +13,7 @@ const getNewAccessToken = async () => {
     const { data } = await axios.post(TOKEN_API + "/refresh_token", {
       refresh_token,
     });
-    // console.log(data,'.............................data new accesstoken')
-    // store.dispatch(
-    //   setTokens({
-    //     access_token: data.access_token,
-    //     refresh_token,
-    //   })
-    // );
-    // access_token = data.access_token;
+    
     return data?.access_token;
   } catch (err) {
     logout("Session expired ,please Login");

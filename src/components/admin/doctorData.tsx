@@ -4,16 +4,18 @@ import { useDispatch } from 'react-redux';
 import { ADMIN_API } from '../../constants';
 import axiosJWT from '../../utils/axiosService';
 import { DoctorInterface } from '../../types/DoctorInterface';
-import useDoctors from '../../hooks/useDoctors';
 import { clearDoctor } from '../../redux/slices/DoctorSlice';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const DoctorData: React.FC = () => {
-  const { doctors, setDoctors } = useDoctors();
-  const dispatch = useDispatch();
+interface DoctorDataProps {
+  doctors: DoctorInterface[];
+  currentPage: number;
+  doctorsPerPage: number;
+}
 
-  const approvedDoctors = doctors.filter(doctor => doctor.isApproved);
+const DoctorData: React.FC<DoctorDataProps> = ({ doctors }) => {
+  const dispatch = useDispatch();
 
   const handleCheckboxChange = (doctor: DoctorInterface) => {
     const action = doctor.isBlocked ? "unblock" : "block";
@@ -22,7 +24,7 @@ const DoctorData: React.FC = () => {
         <p>Do you really want to {action} this doctor?</p>
         <button
           onClick={() => {
-            const newDoctors = doctors.map((item) => {
+             doctors.map((item) => {
               if (doctor._id === item._id) {
                 doctor.isBlocked = !doctor.isBlocked;
                 if (doctor.isBlocked) {
@@ -31,8 +33,6 @@ const DoctorData: React.FC = () => {
               }
               return item;
             });
-
-            setDoctors(newDoctors);
 
             axiosJWT.patch(`${ADMIN_API}/block_doctor/${doctor._id}`)
               .then(response => {
@@ -61,7 +61,7 @@ const DoctorData: React.FC = () => {
   return (
     <>
       <ToastContainer />
-      {approvedDoctors.map((doctor: DoctorInterface, index: number) => (
+      {doctors.map((doctor: DoctorInterface, index: number) => (
         <tr key={doctor._id} className="bg-white border-b dark:bg-white dark:border-black-700 hover:bg-gray-50 dark:hover:bg-fuchsia-200">
           <td className="px-6 py-4 text-left font-medium text-gray-900 whitespace-nowrap dark:text-fuchsia-950">
             {index + 1}

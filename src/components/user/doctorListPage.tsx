@@ -239,10 +239,10 @@ const DoctorListingPage: React.FC = () => {
         )}
       </div>
       {/* Doctor Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 ">
         {doctors.map((doctor) => (
-          <Link key={doctor._id} to={`/user/doctor/${doctor._id}`}>
-            <div className="bg-gray-300 shadow-md rounded-lg p-6 cursor-pointer flex flex-col justify-center items-center">
+          <Link key={doctor._id} to={`/doctors/${doctor._id}`}>
+            <div className="bg-gray-300 shadow-md rounded-lg p-6 cursor-pointer flex flex-col justify-center items-center hover:bg-gray-50 dark:hover:bg-fuchsia-200">
               <img
                 src={doctor.profileImage}
                 alt="Doctor"

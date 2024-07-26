@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import Navbar from "../../components/user/Navbar/Navbar";
-import PaymentMessage from "../../components/user/payment";
+import PaymentMessage from "../../components/user/Payment";
 import axiosJWT from "../../utils/axiosService";
 import { USER_API } from "../../constants";
 

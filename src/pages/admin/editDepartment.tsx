@@ -14,7 +14,6 @@ const EditDepartmentPage: React.FC = () => {
   const [isListed, setIsListed] = useState(false);
    
   useEffect(() => {
-    console.log('hiiiiiiiiiiiiiiiiiiiii')
     axiosJWT.put(`${ADMIN_API}/department/${id}`)
       .then(response => {
         setDepartmentName(response.data.departmentName);
@@ -25,9 +24,7 @@ const EditDepartmentPage: React.FC = () => {
         showToast('Failed to fetch department details', 'error');
       });
   }, [id]);
-console.log('====================================');
-console.log(departmentName,"..........................................");
-console.log('====================================');
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {

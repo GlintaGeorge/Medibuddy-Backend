@@ -5,7 +5,7 @@ import showToast from "../../utils/toaster";
 import axios from "axios";
 import { validateSignUp } from "../../utils/validation";
 import { DOCTOR_API } from '../../constants';
-import { uploadCertificateToCloudinary } from "../../Api/uploadImages";
+import { uploadCertificateToCloudinary } from "../../Services/uploadImages";
 import backgroundImage from '../../assets/images/tetiana-shyshkina-c6CFeAiydiM-unsplash.jpg';
 
 const Signup: React.FC = () => {
@@ -19,7 +19,6 @@ const Signup: React.FC = () => {
       email: "",
       phoneNumber: "",
       department: "",
-      consultationType: "", 
       education: "",
       description: "",
       experience: "",
@@ -28,7 +27,7 @@ const Signup: React.FC = () => {
       lisenceCertificate: null,
     },
     validate: validateSignUp,
-    onSubmit: async ({ name: doctorName, email, password, phoneNumber, department, education, description, experience, lisenceCertificate, consultationType }) => {
+    onSubmit: async ({ name: doctorName, email, password, phoneNumber, department, education, description, experience, lisenceCertificate }) => {
       setIsSubmitting(true);
       const certificateUrl = await uploadCertificateToCloudinary(lisenceCertificate); 
       axios
@@ -38,7 +37,6 @@ const Signup: React.FC = () => {
           password,
           phoneNumber,
           department,
-          consultationType,
           education,
           description,
           experience,
@@ -58,12 +56,11 @@ const Signup: React.FC = () => {
     },
   });
 
+ console.log(isSubmitting) 
   useEffect(() => {
     const fetchDoctorDepartment = async () => {
       try {
-        console.log("hello...........................")
         const response = await axios.get(`${DOCTOR_API}/departments`);
-        console.log("hello...........................",response.data.departments)
 
         if (response.data.success) {
           console.log(response.data.departments);
@@ -92,9 +89,8 @@ const Signup: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
-console.log('====================================');
-console.log(departments);
-console.log('====================================');
+
+
   return (
     <div className="flex items-center justify-center bg-cover bg-center bg-no-repeat min-h-screen "
     style={{ backgroundImage: `url(${backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
@@ -154,7 +150,7 @@ console.log('====================================');
               {...formik.getFieldProps("department")}
             >
               <option className="text-gray-700" value=""></option>
-              {departments.map((department) => (
+              {departments.map((department:any) => (
                 <option key={department._id} className="text-gray-700" value={department.departmentName}>
                   {department.departmentName}
                 </option>
@@ -164,7 +160,7 @@ console.log('====================================');
               <div className="text-red-500">{formik.errors.department}</div>
             )}
           </div>
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="consultationType">
               Consultation Type
             </label>
@@ -181,7 +177,7 @@ console.log('====================================');
             {formik.errors.consultationType && formik.touched.consultationType && (
               <div className="text-red-500">{formik.errors.consultationType}</div>
             )}
-          </div>
+          </div> */}
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="education">
               Education

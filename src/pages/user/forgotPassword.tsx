@@ -52,7 +52,7 @@ const ForgotPassword: React.FC = () => {
           <p className="text-center mr-16">
               Remember password ?
               <Link
-                to="/user/auth/login"
+                to="/auth/login"
                 className="text-indigo-600 font-medium inline-flex space-x-1 items-center"
               >
                 <span>Login now </span>
