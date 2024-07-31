@@ -13,47 +13,47 @@ const VerifyOtp = lazy(()=>import("../pages/user/VerifyOTP"));
 const NotFoundPage = lazy(() => import("../pages/Error404"));
 const Login = lazy(()=>import("../pages/user/Login"));
 const Home = lazy(() => import("../pages/user/Home"));
-const ForgotPassword = lazy(() => import("../pages/user/forgotPassword"));
-const ResetPassword = lazy(()=>import("../pages/user/resetPassword"));
-const ProfileUser = lazy(()=>import("../pages/user/profile"));
-const DoctorDetailsUser = lazy(()=>import("../pages/user/singleDoctorDetails"));
+const ForgotPassword = lazy(() => import("../pages/user/ForgotPassword"));
+const ResetPassword = lazy(()=>import("../pages/user/ResetPassword"));
+const ProfileUser = lazy(()=>import("../pages/user/Profile"));
+const DoctorDetailsUser = lazy(()=>import("../pages/user/SingleDoctorDetails"));
 const DoctorList = lazy(()=>import("../pages/user/DoctorPage"));
 const AppoinmentBookingPage = lazy(()=>import("../pages/user/Appointment"));
 const AppoinmentOnlineBookingPage = lazy(()=>import("../pages/user/OnlineAppointment"));
 const CheckoutPage = lazy(()=>import('../pages/user/CheckOutPage'))
-const PaymentCompleted = lazy(() => import("../pages/user/paymentCompleted"));
-const AppoinmentDetails = lazy(()=>import("../pages/user/appoinmentDetails"));
-const AppoinmentListPage = lazy(()=>import("../pages/user/getAppointmentsAll"));
-const WalletPage = lazy(()=>import("../pages/user/wallet"));
-const Transaction = lazy(()=>import("../pages/user/walletTransation"));
-const Chat = lazy(()=>import("../pages/user/chat"));
+const PaymentCompleted = lazy(() => import("../pages/user/PaymentCompleted"));
+const AppoinmentDetails = lazy(()=>import("../pages/user/AppoinmentDetails"));
+const AppoinmentListPage = lazy(()=>import("../pages/user/GetAppointmentsAll"));
+const WalletPage = lazy(()=>import("../pages/user/Wallet"));
+const Transaction = lazy(()=>import("../pages/user/WalletTransation"));
+const Chat = lazy(()=>import("../pages/user/Chat"));
 const PatientRights = lazy(()=>import("../pages/user/PatientRights"));
-const AboutPage = lazy (()=> import('../pages/user/aboutUs'))
+const AboutPage = lazy (()=> import('../pages/user/AboutUs'))
 const ContactPage = lazy (()=> import('../pages/user/contactPage'))
 
 //Doctor
-const DoctorSignup = lazy(()=>import("../pages/doctor/doctorSignup"))
-const EmailVerificationPage = lazy(() => import("../pages/doctor/emailVerification")); 
-const DoctorLogin = lazy(()=>import("../pages/doctor/doctorLogin"))
-const DoctorhomePage = lazy(()=>import("../pages/doctor/doctordashbord"))
-const ProfileDoctor = lazy(()=>import("../pages/doctor/profile"));
-const DoctorSlotPage = lazy(()=>import("../pages/doctor/slotPage"));
-const DoctorStatus = lazy(()=>import("../pages/doctor/doctorStatus"));
-const PatientListPage = lazy(()=>import("../pages/doctor/patientListPages"));
-const SinglePagePatient =lazy(()=>import("../pages/doctor/singlePatientList"));
-const DoctorChat=lazy(()=>import("../pages/doctor/chat"));
+const DoctorSignup = lazy(()=>import("../pages/doctor/DoctorSignup"))
+const EmailVerificationPage = lazy(() => import("../pages/doctor/EmailVerification")); 
+const DoctorLogin = lazy(()=>import("../pages/doctor/DoctorLogin"))
+const DoctorhomePage = lazy(()=>import("../pages/doctor/Doctordashbord"))
+const ProfileDoctor = lazy(()=>import("../pages/doctor/Profile"));
+const DoctorSlotPage = lazy(()=>import("../pages/doctor/SlotPage"));
+const DoctorStatus = lazy(()=>import("../pages/doctor/DoctorStatus"));
+const PatientListPage = lazy(()=>import("../pages/doctor/PatientListPages"));
+const SinglePagePatient =lazy(()=>import("../pages/doctor/SinglePatientList"));
+const DoctorChat=lazy(()=>import("../pages/doctor/Chat"));
 
 //admin
 const AdminLogin = lazy(()=>import("../pages/admin/AdminLogin"));
 const AdminDashboard = lazy(()=>import ("../pages/admin/AdminDashboard"));
-const AdminUserList = lazy(()=>import ("../pages/admin/userList"));
-const AdminDoctorList = lazy(()=>import ("../pages/admin/doctorList"));
-const AdminDoctorDetails = lazy(()=>import ("../pages/admin/doctorDetails"));
-const VerificationDoctor = lazy(()=>import("../pages/admin/verificationDoctor"));
-const RequestedDoctors = lazy(()=>import("../pages/admin/requestedDoctors"))
-const AdminDepartmentList = lazy(()=>import ("../pages/admin/departmentList"));
+const AdminUserList = lazy(()=>import ("../pages/admin/UserList"));
+const AdminDoctorList = lazy(()=>import ("../pages/admin/DoctorList"));
+const AdminDoctorDetails = lazy(()=>import ("../pages/admin/DoctorDetails"));
+const VerificationDoctor = lazy(()=>import("../pages/admin/VerificationDoctor"));
+const RequestedDoctors = lazy(()=>import("../pages/admin/RequestedDoctors"))
+const AdminDepartmentList = lazy(()=>import ("../pages/admin/DepartmentList"));
 const AddDepartmentList = lazy(()=>import ("../pages/admin/AddDepartmentPage"));
-const EditDepartment = lazy(()=>import("../pages/admin/editDepartment"))
+const EditDepartment = lazy(()=>import("../pages/admin/EditDepartment"))
 export const MainRouter = () => {
     return (
         <>
