@@ -6,7 +6,6 @@ import {Suspense, lazy} from "react";
 
 
 
-
 //User
 const Register = lazy(()=>import("../pages/user/Register"));
 const VerifyOtp = lazy(()=>import("../pages/user/VerifyOTP"));

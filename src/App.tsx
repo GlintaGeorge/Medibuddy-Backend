@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter } from "react-router-dom";
-import { MainRouter } from "./routes/router";
+import { MainRouter } from "./routes/Router";
 import { Provider } from "react-redux";
 import store, { persistor } from "./redux/store/Store";
 import { PersistGate } from "redux-persist/integration/react";
